@@ -106,10 +106,11 @@ public class BatteryTileService extends TileService {
 
         final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         paint.setColor(Color.WHITE);
-        paint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
-        paint.setTextAlign(Paint.Align.CENTER);
-
-        final float maxTextSize = size * 0.58f;
+        paint.setTypeface(
+            Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        );
+        
+        final float maxTextSize = size * 0.70f;
         paint.setTextSize(maxTextSize);
 
         // Shrink text a bit if needed so 3-digit values like "100" still fit well.
