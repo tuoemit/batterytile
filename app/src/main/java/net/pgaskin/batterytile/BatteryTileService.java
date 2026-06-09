@@ -107,7 +107,7 @@ public class BatteryTileService extends TileService {
         final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
         paint.setColor(Color.WHITE);
         paint.setTypeface(
-            Typeface.create("sans-serif-medium", Typeface.NORMAL)
+            Typeface.create(Typeface.NORMAL)
         );
         
         final float maxTextSize = size * 0.70f;
