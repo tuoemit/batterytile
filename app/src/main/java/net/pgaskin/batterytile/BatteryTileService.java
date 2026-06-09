@@ -6,8 +6,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Color;
+import android.graphics.Paint;
+import android.graphics.Typeface;
 import android.graphics.drawable.Icon;
 import android.os.BatteryManager;
+import android.os.Build;
 import android.os.Handler;
 import android.service.quicksettings.Tile;
 import android.service.quicksettings.TileService;
@@ -17,13 +23,13 @@ import java.lang.reflect.Field;
 import java.util.Objects;
 
 public class BatteryTileService extends TileService {
-    private final int UPDATE_INTERVAL = 10000;
-    private final String DISPLAY_STATE_PREF = "display_state";
-    private final int DISPLAY_STATE_CURRENT = 0;
-    private final int DISPLAY_STATE_TEMP = 1;
-    private final int DISPLAY_STATE_TIME = 2;
-    private final int DISPLAY_STATE_PERCENT = 3;
-    private final int DISPLAY_STATE_COUNT = 4;
+    private static final int UPDATE_INTERVAL = 10000;
+    private static final String DISPLAY_STATE_PREF = "display_state";
+    private static final int DISPLAY_STATE_CURRENT = 0;
+    private static final int DISPLAY_STATE_TEMP = 1;
+    private static final int DISPLAY_STATE_TIME = 2;
+    private static final int DISPLAY_STATE_PERCENT = 3;
+    private static final int DISPLAY_STATE_COUNT = 4;
 
     private int displayState;
 
@@ -32,7 +38,6 @@ public class BatteryTileService extends TileService {
     @Override
     public void onCreate() {
         HiddenApiBypass.addHiddenApiExemptions("Landroid/os/BatteryManager;", "Lcom/android/internal/app/IBatteryStats;");
-        icBattery0Bar = Icon.createWithResource(this, R.drawable.ic_battery_0_bar);
         handler = Handler.createAsync(getMainLooper());
         displayState = getPreferences().getInt(DISPLAY_STATE_PREF, 0);
         batteryManager = getSystemService(BatteryManager.class);
@@ -82,14 +87,46 @@ public class BatteryTileService extends TileService {
         }
     };
 
-    private Icon icBattery0Bar;
     private void onUpdateTile() {
         final Tile qsTile = getQsTile();
-        qsTile.setIcon(icBattery0Bar);
+        final int pct = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+
+        qsTile.setIcon(createTextIcon(pct >= 0 ? String.valueOf(pct) : "?"));
         qsTile.setState(Tile.STATE_INACTIVE);
         qsTile.setLabel("Battery");
         qsTile.setSubtitle(formatBatteryState());
         qsTile.updateTile();
+    }
+
+    private Icon createTextIcon(String text) {
+        final float density = getResources().getDisplayMetrics().density;
+        final int size = Math.round(48 * density); // 48dp square canvas
+        final Bitmap bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
+        final Canvas canvas = new Canvas(bitmap);
+
+        final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+        paint.setColor(Color.WHITE);
+        paint.setTypeface(Typeface.create(Typeface.DEFAULT, Typeface.BOLD));
+        paint.setTextAlign(Paint.Align.CENTER);
+
+        final float maxTextSize = size * 0.58f;
+        paint.setTextSize(maxTextSize);
+
+        // Shrink text a bit if needed so 3-digit values like "100" still fit well.
+        final float width = paint.measureText(text);
+        if (width > size * 0.78f) {
+            paint.setTextSize(maxTextSize * (size * 0.78f / width));
+        }
+
+        final Paint.FontMetrics fm = paint.getFontMetrics();
+        final float x = size / 2f;
+        final float y = size / 2f - (fm.ascent + fm.descent) / 2f;
+        canvas.drawText(text, x, y, paint);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            return Icon.createWithBitmap(bitmap);
+        }
+        return Icon.createWithBitmap(bitmap);
     }
 
     private String formatBatteryState() {
@@ -109,23 +146,23 @@ public class BatteryTileService extends TileService {
                 break;
             }
             case DISPLAY_STATE_TEMP: {
-                if (System.currentTimeMillis() - battDeciCelsiusAt < 5*60*1000) {
-                    state.append(battDeciCelsius/10);
+                if (System.currentTimeMillis() - battDeciCelsiusAt < 5 * 60 * 1000) {
+                    state.append(battDeciCelsius / 10);
                     state.append('.');
-                    state.append(battDeciCelsius%10);
+                    state.append(battDeciCelsius % 10);
                 } else {
                     state.append('?');
                 }
-                state.append((char)(176));
+                state.append((char) (176));
                 state.append('C');
                 break;
             }
             case DISPLAY_STATE_TIME: {
                 final long millis = getTimeRemaining(batteryManager);
                 if (millis >= 0) {
-                    final int mm = (int) ((millis / (1000*60))%60);
-                    final int hh = (int) ((millis / (1000*60*60))%24);
-                    final int dd = (int) ((millis / (1000*60*60*24)));
+                    final int mm = (int) ((millis / (1000 * 60)) % 60);
+                    final int hh = (int) ((millis / (1000 * 60 * 60)) % 24);
+                    final int dd = (int) ((millis / (1000 * 60 * 60 * 24)));
                     if (dd != 0) {
                         state.append(dd);
                         state.append('d');
